@@ -1,4 +1,4 @@
-﻿namespace WebApplication2.Data
+﻿namespace RoleBasedManagement.Models
 {
     public class Login
     {
