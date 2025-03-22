@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35913.81
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RoleBasedManagement", "WebApplication2\RoleBasedManagement.csproj", "{A48BB18D-6595-49CA-9523-A2D3ABAD6C6C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A48BB18D-6595-49CA-9523-A2D3ABAD6C6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A48BB18D-6595-49CA-9523-A2D3ABAD6C6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A48BB18D-6595-49CA-9523-A2D3ABAD6C6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A48BB18D-6595-49CA-9523-A2D3ABAD6C6C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {266E26F6-EC44-4E50-B048-EBEE80A2BFA1}
+	EndGlobalSection
+EndGlobal
