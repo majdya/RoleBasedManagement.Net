@@ -50,8 +50,7 @@ namespace RoleBasedManagement.Controllers
             });
         }
 
-        //  o Create Assignments
-        [HttpPost("create-assignment")]
+        [HttpPost("assignments")]
         public async Task<IActionResult> CreateAssignment([FromBody] CreateAssignmentDTO? assignmentDTO)
         {
             if (!ModelState.IsValid)
@@ -90,11 +89,11 @@ namespace RoleBasedManagement.Controllers
             return Ok(new { message = "Assignment created", assignment });
         }
 
-        //  o Edit Assignments
-        [HttpPut("edit-assignment/{id}")]
-        public async Task<IActionResult> EditAssignment(int id, [FromBody] Assignment updatedAssignment)
+        // Edit Assignments
+        [HttpPut("assignments/{id}")]
+        public async Task<IActionResult> EditAssignment(int id, [FromBody] CreateAssignmentDTO updatedAssignmentDTO)
         {
-            if(updatedAssignment == null)
+            if(updatedAssignmentDTO == null)
             {
                 return BadRequest(new { message = "Invalid assignment data" });
             }
@@ -111,18 +110,20 @@ namespace RoleBasedManagement.Controllers
                 return Unauthorized(new { message = "You are not authorized to edit this assignment" });
             }
 
-            // Update the assignment properties
-            assignment.Title = updatedAssignment.Title;
-            assignment.Description = updatedAssignment.Description;
-            assignment.DueDate = updatedAssignment.DueDate;
+            // Only update the allowed fields
+            assignment.Title = updatedAssignmentDTO.Title;
+            assignment.Description = updatedAssignmentDTO.Description;
+            assignment.DueDate = updatedAssignmentDTO.DueDate;
+            // CreatedDate and CreatedBy remain unchanged
 
             _context.Assignments.Update(assignment);
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Assignment updated", assignment });
         }
-        //  o Delete Assignments
-        [HttpDelete("delete-assignment/{id}")]
+
+        // Delete Assignments
+        [HttpDelete("assignments/{id}")]
         public async Task<IActionResult> DeleteAssignment(int id)
         {
             var assignment = await _context.Assignments.FindAsync(id);
@@ -143,8 +144,8 @@ namespace RoleBasedManagement.Controllers
             return Ok(new { message = "Assignment deleted" });
         }
 
-        //  o Grade Assignments
-        [HttpPut("grade-assignment/{id}")]
+        // Grade Assignments
+        [HttpPut("submissions/{id}/grade")]
         public async Task<IActionResult> GradeAssignment(int id, [FromBody] GradeSubmissionRequest request)
         {
             if(request == null || string.IsNullOrEmpty(request.Grade) || request.Grade.Length > 3)
@@ -179,7 +180,7 @@ namespace RoleBasedManagement.Controllers
         }
 
         // View Student Submissions for an assignment
-        [HttpGet("assignment/{assignmentId}/submissions")]
+        [HttpGet("assignments/{assignmentId}/submissions")]
         public async Task<IActionResult> ViewStudentSubmissions(int assignmentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var assignment = await _context.Assignments.FindAsync(assignmentId);
