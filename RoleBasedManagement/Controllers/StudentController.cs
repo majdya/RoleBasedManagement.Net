@@ -54,8 +54,8 @@ namespace RoleBasedManagement.Controllers
         }
 
         // Submit an assignment
-        [HttpPost("submissions")]
-        public async Task<IActionResult> SubmitAssignment([FromBody] CreateSubmissionDTO submissionDTO)
+        [HttpPost("assignments/{assignmentId}/submit")]
+        public async Task<IActionResult> SubmitAssignment(int assignmentId, [FromBody] CreateSubmissionDTO submissionDTO)
         {
             if (submissionDTO == null)
             {
@@ -69,7 +69,7 @@ namespace RoleBasedManagement.Controllers
             }
 
             // Check if assignment exists
-            var assignment = await _context.Assignments.FindAsync(submissionDTO.AssignmentId);
+            var assignment = await _context.Assignments.FindAsync(assignmentId);
             if (assignment == null)
             {
                 return NotFound(new { message = "Assignment not found" });
@@ -83,7 +83,7 @@ namespace RoleBasedManagement.Controllers
 
             // Check if student has already submitted
             var existingSubmission = await _context.Submissions
-                .FirstOrDefaultAsync(s => s.AssignmentId == submissionDTO.AssignmentId && s.StudentId == studentIdClaim.Value);
+                .FirstOrDefaultAsync(s => s.AssignmentId == assignmentId && s.StudentId == studentIdClaim.Value);
 
             if (existingSubmission != null)
             {
@@ -92,7 +92,7 @@ namespace RoleBasedManagement.Controllers
 
             var submission = new Submission
             {
-                AssignmentId = submissionDTO.AssignmentId,
+                AssignmentId = assignmentId,
                 StudentId = studentIdClaim.Value,
                 Content = submissionDTO.Content,
                 SubmissionDate = DateTime.UtcNow
