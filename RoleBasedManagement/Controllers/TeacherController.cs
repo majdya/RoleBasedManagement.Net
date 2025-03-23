@@ -50,7 +50,7 @@ namespace RoleBasedManagement.Controllers
             });
         }
 
-        [HttpPost("assignments")]
+        [HttpPost("create-assignment")]
         public async Task<IActionResult> CreateAssignment([FromBody] CreateAssignmentDTO? assignmentDTO)
         {
             if (!ModelState.IsValid)
