@@ -181,7 +181,13 @@ namespace RoleBasedManagement.Controllers
 
         // View Student Submissions for an assignment
         [HttpGet("assignments/{assignmentId}/submissions")]
-        public async Task<IActionResult> ViewStudentSubmissions(int assignmentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> ViewStudentSubmissions(
+            int assignmentId,
+            [FromQuery] bool? isGraded = null,
+            [FromQuery] string? sortBy = "submissionDate",
+            [FromQuery] bool sortDescending = true,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
         {
             var assignment = await _context.Assignments.FindAsync(assignmentId);
             if(assignment == null)
@@ -195,23 +201,55 @@ namespace RoleBasedManagement.Controllers
                 return Unauthorized(new { message = "You are not authorized to view these submissions" });
             }
 
-            var submissions = await _context.Submissions
-                .Where(s => s.AssignmentId == assignmentId)
-                .OrderByDescending(s => s.SubmissionDate)
+            var query = _context.Submissions
+                .Where(s => s.AssignmentId == assignmentId);
+
+            // Apply grading filter if specified
+            if (isGraded.HasValue)
+            {
+                query = query.Where(s => !string.IsNullOrEmpty(s.Grade) == isGraded.Value);
+            }
+
+            // Apply sorting
+            query = sortBy?.ToLower() switch
+            {
+                "submissiondate" => sortDescending ? 
+                    query.OrderByDescending(s => s.SubmissionDate) : 
+                    query.OrderBy(s => s.SubmissionDate),
+                "gradeddate" => sortDescending ? 
+                    query.OrderByDescending(s => s.GradedDate) : 
+                    query.OrderBy(s => s.GradedDate),
+                "grade" => sortDescending ? 
+                    query.OrderByDescending(s => s.Grade) : 
+                    query.OrderBy(s => s.Grade),
+                _ => query.OrderByDescending(s => s.SubmissionDate)
+            };
+
+            var submissions = await query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            var total = await _context.Submissions
-                .Where(s => s.AssignmentId == assignmentId)
-                .CountAsync();
+            var total = await query.CountAsync();
 
             return Ok(new { 
+                assignment = new {
+                    assignment.Id,
+                    assignment.Title,
+                    assignment.Description,
+                    assignment.DueDate,
+                    assignment.CreatedDate
+                },
                 submissions,
                 total,
                 page,
                 pageSize,
-                totalPages = (int)Math.Ceiling(total / (double)pageSize)
+                totalPages = (int)Math.Ceiling(total / (double)pageSize),
+                filters = new {
+                    isGraded,
+                    sortBy,
+                    sortDescending
+                }
             });
         }
     }
