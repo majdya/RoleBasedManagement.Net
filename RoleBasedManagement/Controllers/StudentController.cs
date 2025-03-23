@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoleBasedManagement.Data;
@@ -8,41 +7,29 @@ using System.Security.Claims;
 
 namespace RoleBasedManagement.Controllers
 {
-    [Authorize(Roles= "Student")]
+    [Authorize(Roles = "student")]
     [Route("api/[controller]")]
     [ApiController]
     public class StudentController : ControllerBase
     {
         private readonly AppDBContext _context;
-        private readonly IWebHostEnvironment _environment;
-        private const int MaxFileSize = 10 * 1024 * 1024; // 10MB
-        private readonly string[] AllowedFileTypes = { ".pdf", ".doc", ".docx", ".txt" };
 
-        public StudentController(AppDBContext context, IWebHostEnvironment environment)
+        public StudentController(AppDBContext context)
         {
             _context = context;
-            _environment = environment;
         }
 
+        // Get all available assignments
         [HttpGet("assignments")]
         public async Task<IActionResult> GetAssignments([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            var studentIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
-            if(studentIdClaim == null)
-            {
-                return Unauthorized(new { message = "User information is missing in the token" });
-            }
-
             var assignments = await _context.Assignments
-                .Where(a => a.DueDate >= DateTime.UtcNow)
-                .OrderBy(a => a.DueDate)
+                .OrderByDescending(a => a.CreatedDate)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            var total = await _context.Assignments
-                .Where(a => a.DueDate >= DateTime.UtcNow)
-                .CountAsync();
+            var total = await _context.Assignments.CountAsync();
 
             return Ok(new { 
                 assignments,
@@ -53,25 +40,90 @@ namespace RoleBasedManagement.Controllers
             });
         }
 
+        // Get a specific assignment
+        [HttpGet("assignments/{id}")]
+        public async Task<IActionResult> GetAssignment(int id)
+        {
+            var assignment = await _context.Assignments.FindAsync(id);
+            if (assignment == null)
+            {
+                return NotFound(new { message = "Assignment not found" });
+            }
+
+            return Ok(assignment);
+        }
+
+        // Submit an assignment
+        [HttpPost("submissions")]
+        public async Task<IActionResult> SubmitAssignment([FromBody] CreateSubmissionDTO submissionDTO)
+        {
+            if (submissionDTO == null)
+            {
+                return BadRequest(new { message = "Invalid submission data" });
+            }
+
+            var studentIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+            if (studentIdClaim == null)
+            {
+                return Unauthorized(new { message = "User information is missing in the token" });
+            }
+
+            // Check if assignment exists
+            var assignment = await _context.Assignments.FindAsync(submissionDTO.AssignmentId);
+            if (assignment == null)
+            {
+                return NotFound(new { message = "Assignment not found" });
+            }
+
+            // Check if assignment is past due date
+            if (DateTime.UtcNow > assignment.DueDate)
+            {
+                return BadRequest(new { message = "Assignment submission deadline has passed" });
+            }
+
+            // Check if student has already submitted
+            var existingSubmission = await _context.Submissions
+                .FirstOrDefaultAsync(s => s.AssignmentId == submissionDTO.AssignmentId && s.StudentId == studentIdClaim.Value);
+
+            if (existingSubmission != null)
+            {
+                return BadRequest(new { message = "You have already submitted this assignment" });
+            }
+
+            var submission = new Submission
+            {
+                AssignmentId = submissionDTO.AssignmentId,
+                StudentId = studentIdClaim.Value,
+                Content = submissionDTO.Content,
+                SubmissionDate = DateTime.UtcNow
+            };
+
+            _context.Submissions.Add(submission);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Submission created", submission });
+        }
+
+        // Get student's submissions
         [HttpGet("my-submissions")]
         public async Task<IActionResult> GetMySubmissions([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var studentIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
-            if(studentIdClaim == null)
+            if (studentIdClaim == null)
             {
                 return Unauthorized(new { message = "User information is missing in the token" });
             }
 
             var submissions = await _context.Submissions
                 .Include(s => s.Assignment)
-                .Where(s => s.StudentId.ToString() == studentIdClaim.Value)
+                .Where(s => s.StudentId == studentIdClaim.Value)
                 .OrderByDescending(s => s.SubmissionDate)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
             var total = await _context.Submissions
-                .Where(s => s.StudentId.ToString() == studentIdClaim.Value)
+                .Where(s => s.StudentId == studentIdClaim.Value)
                 .CountAsync();
 
             return Ok(new { 
@@ -81,72 +133,6 @@ namespace RoleBasedManagement.Controllers
                 pageSize,
                 totalPages = (int)Math.Ceiling(total / (double)pageSize)
             });
-        }
-
-        [HttpPost("submit-assignment/{assignmentId}")]
-        public async Task<IActionResult> SubmitAssignment(int assignmentId, [FromForm] IFormFile file)
-        {
-            if(file == null || file.Length == 0)
-            {
-                return BadRequest(new { message = "No file was uploaded" });
-            }
-
-            if(file.Length > MaxFileSize)
-            {
-                return BadRequest(new { message = "File size exceeds 10MB limit" });
-            }
-
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if(!AllowedFileTypes.Contains(extension))
-            {
-                return BadRequest(new { message = "Invalid file type. Allowed types: PDF, DOC, DOCX, TXT" });
-            }
-
-            var studentIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
-            if(studentIdClaim == null)
-            {
-                return Unauthorized(new { message = "User information is missing in the token" });
-            }
-
-            var assignment = await _context.Assignments.FindAsync(assignmentId);
-            if(assignment == null)
-            {
-                return NotFound(new { message = "Assignment not found" });
-            }
-
-            if(DateTime.UtcNow > assignment.DueDate)
-            {
-                return BadRequest(new { message = "Assignment submission deadline has passed" });
-            }
-
-            // Create unique filename
-            var fileName = $"{Guid.NewGuid()}{extension}";
-            var uploadsFolder = Path.Combine(_environment.WebRootPath, "Submissions");
-            if(!Directory.Exists(uploadsFolder))
-            {
-                Directory.CreateDirectory(uploadsFolder);
-            }
-
-            var filePath = Path.Combine(uploadsFolder, fileName);
-            using(var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
-            }
-
-            // Create submission record
-            var submission = new Submission
-            {
-                AssignmentId = assignmentId,
-                StudentId = int.Parse(studentIdClaim.Value),
-                SubmissionDate = DateTime.UtcNow,
-                FilePath = fileName,
-                OriginalFileName = file.FileName
-            };
-
-            _context.Submissions.Add(submission);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Assignment submitted successfully", submission });
         }
 
         [HttpGet("grades")]
@@ -160,14 +146,14 @@ namespace RoleBasedManagement.Controllers
 
             var gradedSubmissions = await _context.Submissions
                 .Include(s => s.Assignment)
-                .Where(s => s.StudentId.ToString() == studentIdClaim.Value && !string.IsNullOrEmpty(s.Grade))
+                .Where(s => s.StudentId == studentIdClaim.Value && !string.IsNullOrEmpty(s.Grade))
                 .OrderByDescending(s => s.GradedDate)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
             var total = await _context.Submissions
-                .Where(s => s.StudentId.ToString() == studentIdClaim.Value && !string.IsNullOrEmpty(s.Grade))
+                .Where(s => s.StudentId == studentIdClaim.Value && !string.IsNullOrEmpty(s.Grade))
                 .CountAsync();
 
             return Ok(new { 

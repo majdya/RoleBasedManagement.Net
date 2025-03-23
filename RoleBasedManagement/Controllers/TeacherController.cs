@@ -196,7 +196,6 @@ namespace RoleBasedManagement.Controllers
             }
 
             var submissions = await _context.Submissions
-                .Include(s => s.Student)
                 .Where(s => s.AssignmentId == assignmentId)
                 .OrderByDescending(s => s.SubmissionDate)
                 .Skip((page - 1) * pageSize)
@@ -215,11 +214,5 @@ namespace RoleBasedManagement.Controllers
                 totalPages = (int)Math.Ceiling(total / (double)pageSize)
             });
         }
-    }
-
-    public class GradeSubmissionRequest
-    {
-        public required string Grade { get; set; }
-        public required string Comments { get; set; }
     }
 }

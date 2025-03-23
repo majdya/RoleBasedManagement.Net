@@ -14,14 +14,13 @@ namespace RoleBasedManagement.Data
         protected AppDBContext()
         {
         }
+
         public DbSet<Assignment> Assignments { get; set; }
         public DbSet<Submission> Submissions { get; set; }
-        public DbSet<Teacher> Teachers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            // Additional configuration if needed
         }
     }
 }
