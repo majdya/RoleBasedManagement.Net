@@ -101,7 +101,7 @@ namespace RoleBasedManagement.Controllers
             _context.Submissions.Add(submission);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Submission created", submission });
+            return Ok(new { message = "Submission created", submission, assignment });
         }
 
         // Get student's submissions
@@ -126,12 +126,18 @@ namespace RoleBasedManagement.Controllers
                 .Where(s => s.StudentId == studentIdClaim.Value)
                 .CountAsync();
 
+            // Fetch available assignments that have not been submitted
+            var availableAssignments = await _context.Assignments
+                .Where(a => !a.Submissions.Any(s => s.StudentId == studentIdClaim.Value))
+                .ToListAsync();
+
             return Ok(new { 
                 submissions,
                 total,
                 page,
                 pageSize,
-                totalPages = (int)Math.Ceiling(total / (double)pageSize)
+                totalPages = (int)Math.Ceiling(total / (double)pageSize),
+                availableAssignments // Include available assignments in the response
             });
         }
 
