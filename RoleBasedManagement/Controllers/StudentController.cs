@@ -103,10 +103,13 @@ namespace RoleBasedManagement.Controllers
 
             // Check if assignment exists
             var assignment = await _context.Assignments.FindAsync(assignmentId);
-            if (assignment == null)
+            if(assignment == null)
             {
                 return NotFound(new { message = "Assignment not found" });
             }
+
+            // Attach the assignment to the context to ensure it's not treated as a new entity
+            _context.Attach(assignment);
 
             // Check if assignment is past due date
             if (DateTime.UtcNow > assignment.DueDate)
