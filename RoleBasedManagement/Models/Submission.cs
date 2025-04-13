@@ -10,5 +10,5 @@
     public string GradedBy { get; set; } = string.Empty; // Initialize with default value
     public string Comments { get; set; } = string.Empty; // Initialize with default value
 
-    public virtual required Assignment Assignment { get; set; } // Navigation property
+    public virtual Assignment? Assignment { get; set; } // Navigation property
 }
